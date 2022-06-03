@@ -59,8 +59,16 @@ func getTags(url string) []string {
 	fmt.Println(url)
 	out := []string{}
 	c.OnHTML("[class='project-item  js-project']", func(e *colly.HTMLElement) {
-		fmt.Printf("%#v\n", e)
+		el := strings.Split(e.ChildText(".project-header"), "\n")
+		fmt.Printf("%#v\n", trimSpaceSufix(el[len(el)-1]))
 	})
 	c.Visit(url)
 	return out
+}
+
+func trimSpaceSufix(in string) string {
+	for strings.HasPrefix(in, " ") {
+		in = strings.TrimPrefix(in, " ")
+	}
+	return in
 }
