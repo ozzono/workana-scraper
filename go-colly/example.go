@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	pagePrefix = "https://www.workana.com/jobs?category=it-programming&language=en"
-	jobsPrefix = "https://www.workana.com/job/"
-	tagPrefix  = "https://www.workana.com/jobs?skills="
+	domain     = "https://www.workana.com"
+	pagePrefix = "/jobs?category=it-programming&language=en"
+	jobsPrefix = "/job/"
+	tagPrefix  = "/jobs?skills="
 )
 
 type scrape struct {
@@ -19,8 +20,9 @@ type scrape struct {
 }
 
 type job struct {
-	url  string
-	tags []string
+	url   string
+	title string
+	tags  []string
 }
 
 func main() {
@@ -31,7 +33,7 @@ func main() {
 	stop := false
 	c.OnHTML("a", func(e *colly.HTMLElement) {
 		href := e.Attr("href")
-		if strings.HasPrefix(href, pagePrefix) && !stop {
+		if strings.HasPrefix(href, domain+pagePrefix) && !stop {
 			stop = true
 			_, exist := scrape.pages[href]
 			if !exist {
@@ -43,7 +45,7 @@ func main() {
 
 	c.OnRequest(func(r *colly.Request) {})
 
-	c.Visit("https://www.workana.com/jobs?category=it-programming&language=en")
+	c.Visit(domain + "/jobs?category=it-programming&language=en")
 	scrape.GetJobs()
 }
 
@@ -54,16 +56,21 @@ func (s *scrape) GetJobs() {
 	}
 }
 
-func getTags(url string) []string {
+func getTags(url string) job {
 	c := colly.NewCollector()
-	fmt.Println(url)
-	out := []string{}
+	j := job{}
+
 	c.OnHTML("[class='project-item  js-project']", func(e *colly.HTMLElement) {
 		el := strings.Split(e.ChildText(".project-header"), "\n")
-		fmt.Printf("%#v\n", trimSpaceSufix(el[len(el)-1]))
+		j.title = trimSpaceSufix(el[len(el)-1])
+		j.url = domain + e.ChildAttr("a", "href")
+		e.ForEach(".skills", func(i int, h *colly.HTMLElement) {
+			fmt.Println(h.ChildText(".skill"))
+		})
 	})
+
 	c.Visit(url)
-	return out
+	return j
 }
 
 func trimSpaceSufix(in string) string {
