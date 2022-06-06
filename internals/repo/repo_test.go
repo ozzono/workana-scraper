@@ -1,6 +1,7 @@
 package db
 
 import (
+	"strings"
 	"testing"
 	"workana-tags/internals/models"
 
@@ -18,7 +19,7 @@ func TestDB(t *testing.T) {
 	testJob := models.Job{
 		Title: "test job",
 		Path:  "test/path",
-		Tags:  []string{"tag1", "tag2", "tag3"},
+		Tags:  []string{"TAG1", "tAg2", "tag3"},
 	}
 
 	assert.NoError(t, db.InsertJob(testJob), "db.InsertJob(testJob)")
@@ -30,4 +31,17 @@ func TestDB(t *testing.T) {
 	for i := range jobs {
 		jobs[i].Log()
 	}
+
+	expected := models.Job{
+		Title: testJob.Title,
+		Path:  testJob.Path,
+		Tags:  strings.Split(strings.ToLower(strings.Join(testJob.Tags, ",")), ","),
+	}
+	returned := models.Job{
+		Title: jobs[0].Title,
+		Path:  jobs[0].Path,
+		Tags:  jobs[0].Tags,
+	}
+
+	assert.Equalf(t, expected, returned, "exepecting: %v, found: %v", expected, returned)
 }
