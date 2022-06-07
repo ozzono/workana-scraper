@@ -1,57 +1,77 @@
 package main
 
 import (
-	"log"
 	"net/http"
+	"workana-tags/internals/models"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/pkg/errors"
 )
 
-type job struct {
-	title string
-	path  string
+type client struct {
+	scrape *goquery.Document
+	close  func()
+	debug  bool
 }
 
-func Workana() {
-	// Request the HTML page.
-	res, err := http.Get("https://www.workana.com/jobs?category=it-programming&language=en&page=2")
+func newClient(url string, debug bool) (*client, error) {
+	res, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.Wrap(err, "http.Get")
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+		return nil, errors.Errorf("status code error: %d %s", res.StatusCode, res.Status)
 	}
 
-	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.Wrap(err, "goquery.NewDocumentFromReader")
 	}
 
-	// Find the review items
-	repeat := true
-	doc.Find(".project-item").Each(func(i int, s *goquery.Selection) {
-		if repeat {
-			j := job{}
-			j.title = s.Find(".project-header a").Text()
-			href, found := s.Find(".project-header a").Attr("href")
-			if found {
-				j.path = href
-			}
-			j.Log()
+	return &client{
+		scrape: doc,
+		close: func() {
+			res.Body.Close()
+		},
+		debug: debug,
+	}, nil
+}
 
-			s.Find(".project-body").Text()
-			repeat = false
+func GetWorkanaJobs(url string) ([]*models.Job, error) {
+
+	client, err := newClient(url, true)
+	if err != nil {
+		return nil, errors.Wrap(err, "newClient")
+	}
+	jobs := []*models.Job{}
+
+	client.scrape.Find(".project-item").Each(func(i int, s *goquery.Selection) {
+		j := models.Job{}
+		j.Title = s.Find(".project-header a").Text()
+		href, found := s.Find(".project-header a").Attr("href")
+		if found {
+			j.Path = href
 		}
+		j.Log()
+
+		jobs = append(jobs, &j)
 	})
+
+	return jobs, nil
 }
 
-func (j job) Log() {
-	log.Printf("j.title -- %v", j.title)
-	log.Printf("j.path --- %v", j.path)
-}
+func GetJobTags(url string) ([]string, error) {
+	client, err := newClient(url, true)
+	if err != nil {
+		return nil, errors.Wrap(err, "newClient")
+	}
 
-func main() {
-	Workana()
+	tags := []string{}
+
+	client.scrape.Find(".skill").Each(func(i int, s *goquery.Selection) {
+		tags = append(tags, s.Text())
+	})
+
+	return tags, nil
 }
