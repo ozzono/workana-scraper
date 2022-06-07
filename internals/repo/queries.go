@@ -4,7 +4,7 @@ const (
 	createJobsTable = `CREATE TABLE jobs (
 		"id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"title" TEXT,
-		"path" TEXT
+		"path" TEXT NOT NULL UNIQUE
 	  );`
 
 	createTagsTable = `create table tags(
@@ -17,7 +17,7 @@ const (
 		"tag_id"  INTEGER REFERENCES tag(id) ON UPDATE CASCADE
 	);`
 
-	insertJobQuery    = `INSERT INTO jobs(title, path) VALUES (?, ?) returning id;`
+	insertJobQuery    = `INSERT OR IGNORE INTO jobs(title, path) VALUES (?, ?) returning id;`
 	insertTagQuery    = `INSERT OR IGNORE INTO tags(label) VALUES(?) returning id;`
 	insertJobTagQuery = `INSERT OR IGNORE INTO jobtags(job_id,tag_id) VALUES(?,?);`
 
